@@ -4,12 +4,24 @@ This software is designed to run techno-economic simulations of CSGs accordingly
 ## How to use (TL;DR version)
 1) Clone repository.
 2) Run 
-```pip install -r requirements.txt'```.
+```pip install -r requirements.txt```.
 3) Modify files in the Input folder according to your specification. 
 4) Run form the working directory
-```'python main.py'```
+```python main.py```
 5) Results will be saved in Output folder. 
 
+## Help
+run 
+```python main.py -help```
+Available options: 
+-  --version             Show version
+-  --license             Show license
+-  --python_version      Show python version
+-  --author              Show author
+-  --status              Show status
+-  --last_release        Show date of last release
+-  --description         Show description of program
+-  --credits             Show credits
 ## Files:
 ### Main.py 
 This Python script is designed to perform a comprehensive analysis and simulation of energy consumption, production, and economic aspects for a community utilizing photovoltaic (PV) systems and battery energy storage systems (BESS). The main functionalities of this script include:
