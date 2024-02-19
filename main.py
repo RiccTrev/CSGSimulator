@@ -63,7 +63,7 @@ def main(args):
     for elements in list_dimensionamenti:
         potenza = elements[0]
         c_bess = elements[1]
-        print(f'Analizzo iterazione con PUN da file con potenza PV pari a {potenza}kWp e capacità bess pari a {c_bess}kWh')
+        print(f'Analyzing iteration with PUN specified in file, PV: {potenza}kWp, BESS: {c_bess}kWh')
         membri['AUC'] = pd.DataFrame()
         # Istanzio la colonna DataOra
         membri['AUC']['DataOra'] = np.array(membri[list_utenti[0]]['DataOra'])
@@ -99,11 +99,11 @@ def main(args):
                     output_directory + 'output_PUN_File' + str(
                         potenza) + '_' + str(c_bess) + '.xlsx') as writer:
                 membri['AUC'].to_excel(writer, sheet_name='AUC', index=False)
-                AUC_mensile.to_excel(writer, sheet_name='AUC_mensile', index=False)
-                AUC_annuale.to_excel(writer, sheet_name='AUC_annuale', index=False)
-                SimEconomica.to_excel(writer, sheet_name='SimEconomica', index=False)
+                AUC_mensile.to_excel(writer, sheet_name='AUC_monthly', index=False)
+                AUC_annuale.to_excel(writer, sheet_name='AUC_yearly', index=False)
+                SimEconomica.to_excel(writer, sheet_name='EconomicSimSpecifiedPUN', index=False)
                 print('Writing file output_PUN_File' + str(potenza) + '_' + str(
-                    c_bess) + '.xlsx realizzata con successo')
+                    c_bess) + '.xlsx successfully written')
         except:
             raise TypeError('Can not write output_PUN_File' + str(potenza) + '_' + str(
                 c_bess) + '.xlsx close it and retry.')
@@ -115,16 +115,16 @@ def main(args):
     #Scrivo i df_annuali con tutti i risultati con PUN specificato in file.
     try:
         file = Path(
-            output_directory + 'risultati_annuali_PUN_File.xlsx')
+            output_directory + 'yearly_results_PUN_File.xlsx')
         if file.exists():
             print("File already exists. Deleting it...")
             os.remove(file)
         with pd.ExcelWriter(
-                output_directory + 'risultati_annuali_PUN_File.xlsx') as writer:
+                output_directory + 'yearly_results_PUN_File.xlsx') as writer:
             df_annuali.to_excel(writer, sheet_name='Annual Results', index=False)
-            print('Writing file risultati_annuali.xlsx realizzata con successo')
+            print('Writing file yearly_results_PUN_File.xlsx realizzata con successo')
     except:
-        raise TypeError('Can not write file risultati_annuali_PUN_File.xlsx, close it and retry.')
+        raise TypeError('Can not write file yearly_results_PUN_File.xlsx, close it and retry.')
 
     ###############################################
     ###############################################
@@ -175,9 +175,9 @@ def main(args):
                             PUN_value * 1000) + '_' + str(
                             potenza) + '_' + str(c_bess) + '.xlsx') as writer:
                     membri['AUC'].to_excel(writer, sheet_name='AUC', index=False)
-                    AUC_mensile.to_excel(writer, sheet_name='AUC_mensile', index=False)
-                    AUC_annuale.to_excel(writer, sheet_name='AUC_annuale', index=False)
-                    SimEconomica.to_excel(writer, sheet_name='SimEconomica', index=False)
+                    AUC_mensile.to_excel(writer, sheet_name='AUC_monthly', index=False)
+                    AUC_annuale.to_excel(writer, sheet_name='AUC_monthly', index=False)
+                    SimEconomica.to_excel(writer, sheet_name='EconomicSim', index=False)
                     print('Writing file output_' + str(PUN_value * 1000) + '_' + str(potenza) + '_' + str(
                         c_bess) + '.xlsx successfully written')
             except:
@@ -194,20 +194,20 @@ def main(args):
 
     try:
         file = Path(
-            output_directory + 'risultati_annuali.xlsx')
+            output_directory + 'annual_results.xlsx')
         if file.exists():
             print("The file already exist. Deleting the old one...")
             os.remove(file)
         with pd.ExcelWriter(
-                output_directory + 'risultati_annuali.xlsx') as writer:
+                output_directory + 'annual_results.xlsx') as writer:
             df_annuali.to_excel(writer, sheet_name='Annual Results', index=False)
-            print('File risultati_annuali.xlsx successfully writen')
+            print('File annual_results.xlsx successfully writen')
         with pd.ExcelWriter(
                 output_directory + 'ElencoSimSensitivita.xlsx') as writer:
             ElencoSimEconomiche.to_excel(writer, sheet_name='ElencoSimulazioni', index=False)
             print('File ElencoSimSensitivita.xlsx successfully written')
     except:
-        raise TypeError('Can not write file risultati_annuali.xlsx, close it and retry')
+        raise TypeError('Can not write file annual_results.xlsx, close it and retry')
 
 def parse_args(args):
     """
