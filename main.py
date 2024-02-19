@@ -5,6 +5,7 @@ __status__ = "validated"
 __date__ = "5/01/2024"
 __credits__ = "Riccardo Trevisan, University of Cagliari"
 __license__ = "GPL-3.0"
+__python_version__ = "3.12.1"
 
 
 def main(args):
@@ -169,6 +170,10 @@ def parse_args(args):
       action="store_true",
       help="Show license")
     parser.add_argument(
+      "--python_version",
+      action="store_true",
+      help="Show python version")
+    parser.add_argument(
       "--author",
       action="store_true",
       help="Show author")
@@ -232,6 +237,9 @@ if __name__ == "__main__":
       sys.exit()
     if args.license:
       print("{license}".format(credits=__credits__))
+      sys.exit()
+    if args.license:
+      print("{python_version}".format(credits=__credits__))
       sys.exit()
 
     # Chiamata a main con i dati JSON

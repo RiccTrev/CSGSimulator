@@ -1,5 +1,4 @@
 # Collective self consumption group techno economic simulator
-
 This software is designed to run techno-economic simulations of CSGs accordingly to the italian regulation. 
 
 ## How to use (TL;DR version)
@@ -12,7 +11,6 @@ This software is designed to run techno-economic simulations of CSGs accordingly
 5) Results will be saved in Output folder. 
 
 ## Files:
-
 ### Main.py 
 This Python script is designed to perform a comprehensive analysis and simulation of energy consumption, production, and economic aspects for a community utilizing photovoltaic (PV) systems and battery energy storage systems (BESS). The main functionalities of this script include:
 
@@ -64,7 +62,9 @@ Description of the function is provided inside the file.
 ```python main.py```
 5) Results will be saved in "Output" folder. 
 
+## Requirements
+This software is devloped in Python V3.12.1. 
+For the required packages see "requirements.txt" file. 
 
 ## License
-
 [GPL-3.0](https://github.com/RiccTrev/CSGSimulator/blob/main/license.txt)
