@@ -1,6 +1,6 @@
 #SET LOCATION
-Lat = 39.205
-Lon = 9.130
+Lat = 39.205 #latitude
+Lon = 9.130 #longitude
 
 # SET LOSSES FOR THE PV (%)
 perdite = 16
@@ -17,9 +17,9 @@ parametri_economici = {
     'Infrastruttura': 100, # €/kWx
     'Manodopera': 300, # €/kWp
     'Gestione': 10, # €/kWx
-    'Assicurazione': 0.005, # Come percentuale sul CAPEX
+    'Assicurazione': 0.005, # As a percentage on CAPEX
     'TassoSconto': 0.06, # %
-    'CoeffRiduzionePrestazioni': 0.01, #% riduzione annua entrate attribuibile a riduzione prestazioni PV
+    'CoeffRiduzionePrestazioni': 0.01, # % annual revenue reduction attributable to reduction in PV benefits
     'TAEG': 0.06
 }
 
@@ -48,8 +48,8 @@ incentiviT3 = {
 }
 
 componenti_bolletta = {
-    'trasporto_e_gestione': 0.08,  # (%) I costi di trasporto e gestione sono l'8% della bolletta totale
-    'imposte': 0.1  # (%) Le imposte sono il 10% della bolletta
+    'trasporto_e_gestione': 0.08,  # (%) Transportation and management costs are 8% of the total bill
+    'imposte': 0.1  # (%) Taxes are 10% of the bill
 }
-componenti_bolletta['materia_energia'] = 1 - componenti_bolletta['imposte'] - componenti_bolletta['trasporto_e_gestione']  # (%) di incidenza della materia energia sulla bolletta
+componenti_bolletta['materia_energia'] = 1 - componenti_bolletta['imposte'] - componenti_bolletta['trasporto_e_gestione']  # (%) Of incidence of energy matter on the bill
 

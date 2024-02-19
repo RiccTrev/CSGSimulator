@@ -51,9 +51,9 @@ def CalcolaProduzionePV(Lat, Lon, Potenza, Perdite):
     df = pd.DataFrame.from_dict(todos['outputs']['hourly'])
     df['DataOra'] = df.apply(lambda x: datetime.datetime.strptime(x['time'], '%Y%m%d:%H%M'), axis=1)
     df['DataOra'] = df['DataOra'] - timedelta(
-        minutes=10)  # Tolgo 10 minuti perché pvgis mi torna i dati di produzione al tempo hh:10
-    df['P'] = df['P'] / 1000  # Divido per 1k per avere il valore in kW e non in W
-    df = df.drop(columns=['time', 'G(i)', 'H_sun', 'T2m', 'WS10m', 'Int'])  # Rimuovo colonne inutilizzate
+        minutes=10)  # I remove 10 minutes because pvgis returns my production data to time hh:10
+    df['P'] = df['P'] / 1000  # I divide by 1k to get the value in kW and not W
+    df = df.drop(columns=['time', 'G(i)', 'H_sun', 'T2m', 'WS10m', 'Int'])  # Removing unused columns
     return df
 
 
@@ -97,103 +97,94 @@ def SimulaAUC(potenza, c_bess, list_utenti, df_prezzi, membri, Lat, Lon, perdite
     the function `SimulaAUC`. The PUN value is the price paid by the market operator for the imbalance
     between the energy injected into the grid and the energy withdrawn from the grid. It
     """
-    # Imposto df_PUN che mi serve per fare il merge e il calcolo spesa energia/vendita energia
-    df_PUN = df_prezzi[['DataOra', 'PUN']].copy()  # Lavoro su copia dell'originale. Non modifica originale e sopprime errore SettingWithCopyWarning
+    # I set df_PUN which I need to do the merge and the energy expenditure/energy sale calculation
+    df_PUN = df_prezzi[['DataOra', 'PUN']].copy()  # Work on copy of original. Does not modify original and suppresses error SettingWithCopyWarning
     df_PUN['DataOra'] = pd.to_datetime(df_PUN['DataOra'], format='%d/%m/%Y %H:%M:%S')
-    # df_PUN.loc[df_PUN.DataOra] = pd.to_datetime(df_PUN['DataOra'])
-
+    
     if PUN_value != -1:
         print('Setting new PUN value')
         df_PUN['PUN'] = PUN_value
-    #print(f'VALORE PUN: {df_PUN["PUN"].mean()}')
-    for membro in list_utenti:  # Itero sui membri e aggiungo i consumi di ogni membro.
+    
+    for membro in list_utenti:  # Iterate on the members and add the consumption of each member.
         if membro == 'Utenze Comuni':
             continue
         membri['AUC']['Consumption'] = membri['AUC']['Consumption'] + membri[membro]['Consumption']
-    # Istanzio un produttore nella comunità
+    
 
-    #Mi serve una colonna PUN nel df membri['AUC'] per quando calcolo l'incentivo MASE
+    #I need a PUN column in the df members['AUC'] for when I calculate the MASE incentive.
     membri['AUC']['PUN'] = df_PUN['PUN']
-    #membri['AUC'] = membri['AUC'].merge(df_PUN, on='DataOra', how='left')
 
     produzione = CalcolaProduzionePV(Lat=Lat, Lon=Lon, Potenza=int(potenza), Perdite=perdite)
-    # Rielaboro il df produzione per poi unirlo a quello AUC con il dato di produzione per la corretta ora
+    # I reprocess the production df and then merge it with the AUC with the production data for the correct time
     produzione['Month'] = produzione['DataOra'].dt.month
     produzione['Day'] = produzione['DataOra'].dt.day
     produzione['Hour'] = produzione['DataOra'].dt.hour
     produzione = produzione.drop(columns='DataOra')
     membri['AUC'] = pd.merge(membri['AUC'], produzione, on=['Month', 'Day', 'Hour'], how="left")
-    # Istanzio gli array necessari per i calcoli
+    # I instantiate the arrays needed for the calculations.
     consumo_utenze_comuni = np.array(membri['Utenze Comuni']['Consumption'])  # consumo delle utenze comuni
-    consumo_AUC = np.array(membri['AUC']['Consumption'])  # consumo aggregato dell'AUC
-    produzione = np.array(membri['AUC']['P'])  # produzione del PV
-    autoconsumo = np.zeros(len(produzione), dtype=float)  # autoconsumo istantaneo delle utenze comuni
-    produzione_residua = 0  # produzione al netto dell'autoconsumo istantaneo delle utenze comuni
-    consumo_residuo_utenze_comuni = 0  # consumo residuo delle utenze comuni dopo aver consumato tutta la produzione.
+    consumo_AUC = np.array(membri['AUC']['Consumption'])  # aggregate consumption of AUC
+    produzione = np.array(membri['AUC']['P'])  # PV production
+    autoconsumo = np.zeros(len(produzione), dtype=float)  # Instantaneous self-consumption of common utilities
+    produzione_residua = 0  # Production net of instantaneous self-consumption of common utilities
+    consumo_residuo_utenze_comuni = 0  # Residual consumption of common utilities after consuming all production.
     SOC = np.zeros(len(produzione), dtype=float)  # state of charge del BESS
-    condivisa = np.zeros(len(produzione), dtype=float)  # energia condivisa
-    immissione = np.zeros(len(produzione), dtype=float)  # energia immessa in rete
+    condivisa = np.zeros(len(produzione), dtype=float)  # shared energy 
+    immissione = np.zeros(len(produzione), dtype=float)  # energy injected
     prelievo = np.zeros(len(produzione),
-                        dtype=float)  # energia prelevata dalla rete dall'AUC (utenze comuni comprese)
-    # Itero sulla lunghezza degli array
+                        dtype=float)  # Energy taken from the grid by the AUC (including common utilities)
+    # Iteration on the length of arrays
     for x in range(len(consumo_AUC)):
         if x == 0:
-            initial_SOC = 0  # Si parte sempre a batteria scarica
+            initial_SOC = 0  # Always start with an empty battery
         else:
-            initial_SOC = SOC[
-                x - 1]  # Stato di carica all'inizio dell'iterazione è uguale a quello finale dello stato precedente.
-        if consumo_utenze_comuni[x] > produzione[
-            x]:  # se il consumo delle utenze comuni è maggiore della produzione
+            initial_SOC = SOC[x - 1]  # The initial state of charge for the iteration is equal to the final state of the previous one.
+        if consumo_utenze_comuni[x] > produzione[x]:  # if the consumption of common utilities is greater than the production
             autoconsumo[x] = produzione[x]
-            if initial_SOC > 0:  # verifico lo stato della batteria (se c'è carica)
-                consumo_residuo_utenze_comuni = consumo_utenze_comuni[x] - produzione[
-                    x]  # calcolo il consumo residuo delle utenze comuni
-                scarica_SOC = min(initial_SOC,
-                                  consumo_residuo_utenze_comuni)  # calcolo la scarica del bess per soddisfare il consumo residuo delle utenze comuni
-                consumo_residuo_utenze_comuni = consumo_residuo_utenze_comuni - scarica_SOC  # ricalcolo eventuale consumo residuo a fronte della scarica del bess
-                SOC[x] = initial_SOC - scarica_SOC  # calcolo la carica del bess.
-                autoconsumo[x] = autoconsumo[x] + scarica_SOC  # Autoconsumo anche l'energia prelevata dal BESS.
-                if consumo_residuo_utenze_comuni > 0:  # se c'è ancora consumo residuo delle utenze comuni => prelevano dalla rete
+            if initial_SOC > 0:  # check the battery status (if it's charged)
+                consumo_residuo_utenze_comuni = consumo_utenze_comuni[x] - produzione[x]  # calculate the remaining consumption of common utilities
+                scarica_SOC = min(initial_SOC, consumo_residuo_utenze_comuni)  # calculate the BESS discharge to meet the remaining consumption of common utilities
+                consumo_residuo_utenze_comuni = consumo_residuo_utenze_comuni - scarica_SOC  # recalculate any remaining consumption after the BESS discharge
+                SOC[x] = initial_SOC - scarica_SOC  # calculate the BESS charge.
+                autoconsumo[x] = autoconsumo[x] + scarica_SOC  # Self-consume the energy also taken from the BESS.
+                if consumo_residuo_utenze_comuni > 0:  # if there is still remaining consumption of common utilities => draw from the grid
                     prelievo[x] = consumo_residuo_utenze_comuni
-                if SOC[x] >= 0:  # se c'è ancora carica nel bess la uso per soddisfare il fabbisogno dell'AUC.
+                if SOC[x] >= 0:  # if there is still charge in the BESS, use it to meet the AUC's needs.
                     immissione[x] = min(SOC[x], consumo_AUC[x])
-                    SOC[x] = SOC[x] - immissione[x]  # Aggiorno quindi la carica nel c_bess
-                    prelievo[x] = prelievo[x] + consumo_AUC[
-                        x]  # Per soddisfare il fabbisogno dell'AUC bisogna prelevare dalla rete.
-                condivisa[x] = min(immissione[x], prelievo[x])
-            else:  # se la carica è == 0
+                    SOC[x] = SOC[x] - immissione[x]  # Update the charge in the BESS
+                    prelievo[x] = prelievo[x] + consumo_AUC[x]  # To meet the AUC's needs, it is necessary to draw from the grid.
+                condivisa[x] = min(immissione[x], prelievo[x])  # Shared energy calculation between the grid and the AUC.
+
+            else:  # if charge is 0
                 consumo_residuo_utenze_comuni = consumo_utenze_comuni[x] - autoconsumo[x]
                 prelievo[x] = consumo_residuo_utenze_comuni + consumo_AUC[x]
                 immissione[x] = 0
                 condivisa[x] = min(prelievo[x], immissione[x])
                 SOC[x] = initial_SOC
-        elif consumo_utenze_comuni[x] < produzione[
-            x]:  # se invece il consumo delle utenze comuni è inferiore alla produzione
+        elif consumo_utenze_comuni[x] < produzione[x]:  # if the consumption of common utilities is lower than the production
             autoconsumo[x] = min(produzione[x], consumo_utenze_comuni[x])
             produzione_residua = produzione[x] - autoconsumo[x]
-            if consumo_AUC[x] <= produzione_residua:  # Se il consumo dell'auc è inferiore alla produzione residua
+            if consumo_AUC[x] <= produzione_residua:  # If the AUC consumption is less than the remaining production
                 if c_bess > 0:
-                    immissione[x] = consumo_AUC[x]  # immetto quanto consumo
+                    immissione[x] = consumo_AUC[x]  # I feed in as much as consumed
                     SOC[x] = min(initial_SOC + (produzione_residua - immissione[x]),
-                                 c_bess)  # aumento la carica del bess con il surpluss di produzione, posso caricare fino al massimo della c_BESS
-                    if initial_SOC + (produzione_residua - immissione[
-                        x]) > c_bess:  # se l'initial SOC + (la produzione residua - l'immissione) è maggiore della capacità
-                        immissione[x] = immissione[x] + ((produzione[x] - consumo_AUC[x] - autoconsumo[x]) - (
-                                c_bess - initial_SOC))  # immetto anche la quantità che non posso immagazzinare nel bess: prima parentesi: energia in surpluss, seconda parentesi: capacità batteria disponibile.
+                                 c_bess)  # increase the BESS charge with the production surplus, can charge up to the max of c_BESS
+                    if initial_SOC + (produzione_residua - immissione[x]) > c_bess:  # if initial SOC + (remaining production - feeding) is greater than capacity
+                        immissione[x] = immissione[x] + ((produzione[x] - consumo_AUC[x] - autoconsumo[x]) - (c_bess - initial_SOC))  # also feed in the amount that can't be stored in the BESS: first parenthesis: surplus energy, second parenthesis: available battery capacity.
                 else:
                     immissione[x] = produzione_residua
                 prelievo[x] = consumo_AUC[x]
                 condivisa[x] = min(immissione[x], prelievo[x])
-            elif consumo_AUC[x] > produzione_residua:  # se invece il consumo dell'auc è maggiore della produzione residua
-                consumo_residuo_AUC = consumo_AUC[x] - produzione_residua  # calcolo il consumo residuo dell'AUC
+            elif consumo_AUC[x] > produzione_residua:  # if the AUC consumption is greater than the remaining production
+                consumo_residuo_AUC = consumo_AUC[x] - produzione_residua  # calculate the remaining AUC consumption
                 immissione[x] = produzione_residua
-                if initial_SOC > 0:  # se c'è carica nel bess
+                if initial_SOC > 0:  # if there is charge in the BESS
                     scarica_SOC = min(initial_SOC,
-                                      consumo_residuo_AUC)  # calcolo la scarica massima del bess per soddisfare il consumo residuo dei residenti
-                    immissione[x] = immissione[
-                                        x] + scarica_SOC  # L'immissione che avviene dal BESS viene immessa in rete
-                    consumo_residuo_AUC = consumo_residuo_AUC - scarica_SOC  # ricalcolo eventuale consumo residuo a fronte della scarica del bess
-                    SOC[x] = initial_SOC - scarica_SOC  # calcolo la carica del bess.
+                                      consumo_residuo_AUC)  # calculate the maximum BESS discharge to meet the remaining residents' consumption
+                    immissione[x] = immissione[x] + scarica_SOC  # The discharge happening from the BESS is fed into the grid
+                    consumo_residuo_AUC = consumo_residuo_AUC - scarica_SOC  # recalculate any remaining consumption after the BESS discharge
+                    SOC[x] = initial_SOC - scarica_SOC  # calculate the BESS charge.
+
                 prelievo[x] = consumo_AUC[x]
                 condivisa[x] = min(prelievo[x], immissione[x])
     membri['AUC']['Prelievo'] = prelievo
@@ -203,23 +194,23 @@ def SimulaAUC(potenza, c_bess, list_utenti, df_prezzi, membri, Lat, Lon, perdite
     membri['AUC']['Utenze Comuni'] = consumo_utenze_comuni
     membri['AUC']['SOC'] = SOC
 
-    # Struttura dei costi
-    # Ripartizione costi bolletta: la bolletta viene ricostruita con un sistema di proporzioni a partire dal costo della materia energia calcolata come PUN * Energia Prelevata.
+    # Cost structure
+    # Bill cost allocation: the bill is reconstructed using a proportion system from the cost of energy matter calculated as PUN * Energy Withdrawn.
     trasporto_e_gestione = parametri.componenti_bolletta[
-        'trasporto_e_gestione']  # (%) I costi di trasporto e gestione sono l'8% della bolletta totale
-    imposte = parametri.componenti_bolletta['imposte']  # (%) Le imposte sono il 10% della bolletta
+        'trasporto_e_gestione']  # (%) Transportation and management costs are 8% of the total bill
+    imposte = parametri.componenti_bolletta['imposte']  # (%) Taxes are 10% of the bill
     materia_energia = parametri.componenti_bolletta[
-        'materia_energia']  # (%) di incidenza della materia energia sulla bolletta
+        'materia_energia']  # (%) of the energy matter's impact on the bill
     ###########
-    # NB Il calcolo viene fatto sulla somma dei prelievi delle utenze comuni + quelle delle utenze.
+    # NB The calculation is made on the sum of withdrawals from common utilities + those from individual utilities.
     ###########
-    # Ricostruisco le componenti della bolletta a partire dalla spesa per la materia energia (semplici proporzioni, sorgente: https://www.arera.it/it/dati/ees5.htm)
+    # I rebuild the components of the bill starting from the expenditure for energy matter (simple proportions, source: https://www.arera.it/it/dati/ees5.htm)
+
     membri['AUC']['MateriaEnergia'] = membri['AUC']['PUN'] * membri['AUC']['Prelievo']
     membri['AUC']['TrasportoEGestione'] = membri['AUC']['MateriaEnergia'] * (
             trasporto_e_gestione / materia_energia)
     membri['AUC']['Imposte'] = membri['AUC']['MateriaEnergia'] * (imposte / materia_energia)
     membri['AUC']['CostoBolletta'] = membri['AUC']['MateriaEnergia'] + membri['AUC']['TrasportoEGestione'] + membri['AUC']['Imposte']
-    #membri['AUC']['EntrateCondivisa'] = membri['AUC']['Condivisa'] * incentivo
     membri['AUC']['EntrateCondivisa'] = membri['AUC'].apply(lambda x: CalcolaIncentiviMASE(x['Condivisa'], x['PUN'], potenza), axis=1)
     membri['AUC']['RestituzioneComponentiTariffarie'] = membri['AUC'][
                                                             'Condivisa'] * restituzione_componenti_tariffarie
@@ -230,7 +221,7 @@ def SimulaAUC(potenza, c_bess, list_utenti, df_prezzi, membri, Lat, Lon, perdite
         'RestituzioneComponentiTariffarie'] + membri['AUC']['RID']
 
 
-# SimEconomica: ritorna RicaviESCOAnno1, RicaviAUCAnno1, VariazioneCostiAUCAnno1, NPV, TIR, PI, PBT per le varie percentuali di redistribuzione dell'incentivo per l'energia condivisa.
+#SimEconomics: returns RevenuesESCOYear1, RevenuesAUCAYear1, VariationCostsAUCAYear1, NPV, IRR, PI, PBT for the various redistribution percentages of the shared energy incentive.
 def SimEconomicaAUC(df, CostoPV, CostoBESS, CostoInfrastruttura, CostoManodopera, CostoUnitarioGestione,
                  PercentualeAssicurazione, TassoSconto, CoefficienteRiduzione, PotenzaPV, CapacitaBESS):
     """
@@ -269,11 +260,6 @@ def SimEconomicaAUC(df, CostoPV, CostoBESS, CostoInfrastruttura, CostoManodopera
     `CapacitaBESS`, but the description is missing. Could you please provide more information or let me
     know if you need help with something specific related to this parameter?
     """
-    # df: df con le statistiche annuali
-    # CostoPV: costo unitario del fotovoltaico (€/kWp)
-    # CostoBESS: costo unitario dell'accumulo (€/kWh)
-    # CostoInfrastruttura: costo unitario dell'infrastruttura (€/kWx)
-    # CostoManodopera: costo unitario della manodopera (€/kWh)
     InvestimentoPV = CostoPV * PotenzaPV
     InvestimentoBESS = CostoBESS * CapacitaBESS
     InvestimentoInfrastruttura = CostoInfrastruttura * (PotenzaPV + CapacitaBESS)
@@ -289,10 +275,10 @@ def SimEconomicaAUC(df, CostoPV, CostoBESS, CostoInfrastruttura, CostoManodopera
     RisparmioDaAutoconsumo = df['RisparmioDaAutoconsumo']
     TAEG = parametri.parametri_economici['TAEG']
 
-    # Per ogni percentuale simulo con metodologia Discounted Cashflow
+    # For each percentage I simulate with Discounted Cashflow methodology.    
     percentuali = np.arange(0, 1.05, 0.5)
     orizzonte_temporale = 20  # Anni
-    # Array che contengono i risultati
+    # Arrays containing the results
     RicaviESCO = np.zeros(len(percentuali))
     RicaviAUC = np.zeros(len(percentuali))
     VariazioneCostiAUC = np.zeros(len(percentuali))
@@ -302,7 +288,7 @@ def SimEconomicaAUC(df, CostoPV, CostoBESS, CostoInfrastruttura, CostoManodopera
     PBT = np.zeros(len(percentuali))
     results = pd.DataFrame(
         columns=['RicaviEscoAnno1', 'RicaviAUCAnno1', 'VariazioneCostiAUC', 'RataMutuoImpianti', 'NPV', 'TIR', 'PI', 'PBT'])
-    #Calcolo rata mutuo per impianti (usata solo caso p = 0, investimento diretto utenti)
+    #Calculation of loan installment for facilities (used only case p = 0, direct users investment)
     temp = (1+(TAEG/12))**(12*orizzonte_temporale)
     rata = (CAPEX*(temp)*(TAEG/12)/(temp-1))
     #Alla esco arriva tutto il RID + percentuale energia condivisa.
@@ -310,7 +296,7 @@ def SimEconomicaAUC(df, CostoPV, CostoBESS, CostoInfrastruttura, CostoManodopera
         FlussiScontati = np.zeros(orizzonte_temporale)
         FlussiNonScontati = np.zeros(orizzonte_temporale)
         FlussiCumulati = np.zeros(orizzonte_temporale)
-        if percentuali[p] == 0: #AUC investe da solo 
+        if percentuali[p] == 0: #AUC invests alone 
             RicaviESCO_Anno1 = 0
             RicaviAUC_Anno1 = RicaviRID + RicaviEnergiaCondivisa + RisparmioDaAutoconsumo
             for a in range(orizzonte_temporale):
@@ -322,14 +308,14 @@ def SimEconomicaAUC(df, CostoPV, CostoBESS, CostoInfrastruttura, CostoManodopera
                     FlussiScontati[a] = float(RicaviAUC_Anno1.iloc[0]) / pow((1 + TassoSconto), a)
                     FlussiNonScontati[a] = float(RicaviAUC_Anno1.iloc[0])
                     FlussiCumulati[a] = FlussiCumulati[a - 1] + FlussiScontati[a]
-                    # Calcolo PBT
+                    #  PBT
                     if FlussiCumulati[a - 1] < 0 and FlussiCumulati[a] > 0:
                         PBT[p] = (a - 1) + (-FlussiCumulati[a - 1] / FlussiScontati[a])
                 else:
                     FlussiNonScontati[a] = FlussiNonScontati[a - 1] * (1 - CoefficienteRiduzione)
                     FlussiScontati[a] = FlussiNonScontati[a] / pow((1 + TassoSconto), a)
                     FlussiCumulati[a] = FlussiCumulati[a - 1] + FlussiScontati[a]
-                    # Calcolo PBT
+                    #  PBT
                     if FlussiCumulati[a - 1] < 0 and FlussiCumulati[a] > 0:
                         PBT[p] = (a - 1) + (-FlussiCumulati[a - 1] / FlussiScontati[a])
             if PBT[p] == 0:
@@ -339,14 +325,13 @@ def SimEconomicaAUC(df, CostoPV, CostoBESS, CostoInfrastruttura, CostoManodopera
             RicaviAUC[p] = float(RicaviAUC_Anno1.iloc[0])
             CostiPrima = CostiEnergia + RisparmioDaAutoconsumo
             VariazioneCostiAUC[p] = ((EsborsoNettoAUC.iloc[0] - CostiPrima.iloc[0]) / CostiPrima.iloc[0])
-            # print(f'Flussi scontati per p = {percentuali[p]}: {FlussiScontati}')
             NPV[p] = np.sum(FlussiScontati)
             TIR[p] = npf.irr(FlussiNonScontati)
             PI[p] = 1 + (NPV[p] / CAPEX)
 
-        else: #Esco investe e da parte dei ricavi ad AUC
+        else: #Esco invests and gives part of revenues to AUC
             RicaviESCO_Anno1 = RicaviRID + percentuali[p] * RicaviEnergiaCondivisa 
-            RicaviAUC_Anno1 = (1 - percentuali[p]) * RicaviEnergiaCondivisa + RisparmioDaAutoconsumo #Aggiunto Risparmio da autoconsumo: il problema è che il PBT viene calcolato su ricavi ESCo 
+            RicaviAUC_Anno1 = (1 - percentuali[p]) * RicaviEnergiaCondivisa + RisparmioDaAutoconsumo 
             for a in range(orizzonte_temporale):
                 if a == 0:
                     FlussiScontati[a] = -CAPEX
@@ -356,14 +341,14 @@ def SimEconomicaAUC(df, CostoPV, CostoBESS, CostoInfrastruttura, CostoManodopera
                     FlussiScontati[a] = float(RicaviESCO_Anno1.iloc[0]) / pow((1 + TassoSconto), a)
                     FlussiNonScontati[a] = float(RicaviESCO_Anno1.iloc[0])
                     FlussiCumulati[a] = FlussiCumulati[a - 1] + FlussiScontati[a]
-                    # Calcolo PBT
+                    #  PBT
                     if FlussiCumulati[a - 1] < 0 and FlussiCumulati[a] > 0:
                         PBT[p] = (a - 1) + (-FlussiCumulati[a - 1] / FlussiScontati[a])
                 else:
                     FlussiNonScontati[a] = FlussiNonScontati[a - 1] * (1 - CoefficienteRiduzione)
                     FlussiScontati[a] = FlussiNonScontati[a] / pow((1 + TassoSconto), a)
                     FlussiCumulati[a] = FlussiCumulati[a - 1] + FlussiScontati[a]
-                    # Calcolo PBT
+                    #  PBT
                     if FlussiCumulati[a - 1] < 0 and FlussiCumulati[a] > 0:
                         PBT[p] = (a - 1) + (-FlussiCumulati[a - 1] / FlussiScontati[a])
             if PBT[p] == 0:
@@ -373,11 +358,10 @@ def SimEconomicaAUC(df, CostoPV, CostoBESS, CostoInfrastruttura, CostoManodopera
             RicaviAUC[p] = float(RicaviAUC_Anno1.iloc[0])
             CostiPrima = CostiEnergia + RisparmioDaAutoconsumo
             VariazioneCostiAUC[p] = float((EsborsoNettoAUC.iloc[0] - CostiPrima.iloc[0]) / CostiPrima.iloc[0])
-            # print(f'Flussi scontati per p = {percentuali[p]}: {FlussiScontati}')
             NPV[p] = np.sum(FlussiScontati)
             TIR[p] = npf.irr(FlussiNonScontati)
             PI[p] = 1 + (NPV[p] / CAPEX)
-    # Metto gli array in un df che ritorno
+    # I put the arrays into a df that I return
     results['PercentualeRedistribuzioneEsco'] = pd.Series(percentuali)
     results['CAPEX'] = CAPEX
     results['OPEX'] = OPEX
