@@ -1,4 +1,16 @@
-#Dizionario contenente i costi che vengono usati per la simulazione economica
+#SET LOCATION
+Lat = 39.205
+Lon = 9.130
+
+# SET LOSSES FOR THE PV (%)
+perdite = 16
+
+#SET DIMENSIONINGS TO BE EVALUATED
+PUN_list = [0.05, 0.100]
+listaPV = [5, 7.5, 10] 
+listaBESS = [0, 5, 7.5, 10] 
+
+#Cost dictionary
 parametri_economici = {
     'PV': 1100, # €/kWp
     'BESS': 1000, # €/kWh
@@ -11,15 +23,14 @@ parametri_economici = {
     'TAEG': 0.06
 }
 
+#Incentive dictionary
 incentivi = {
     'RestituzioneComponentiTariffarie': 0.009, # €/MWh
     'IncentivoAUC': 0.100, # €/MWh
     'IncentivoCER': 0.110 # €/MWh
 }
 
-
-
-#Struttura dei nuovi incentivi MASE:
+#New incentive MASE:
 #incentiviT1 per impianti di potenza inferiore a 200kWp
 #incentiviT2 per impianti di potenza compresa fra 200 e 600 kWp
 #incentiviT3 per impianti di potenza superiore a 600kWp
