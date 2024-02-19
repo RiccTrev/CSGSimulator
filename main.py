@@ -60,10 +60,75 @@ def main(args):
     ElencoSimEconomiche = pd.DataFrame()
     # Simulate all the sizing sepecified with the PUN specified in the file.
     df_prezzi['PUN'] = df_prezzi['PUN'] / 1000
+    for elements in list_dimensionamenti:
+        potenza = elements[0]
+        c_bess = elements[1]
+        print(f'Analizzo iterazione con PUN da file con potenza PV pari a {potenza}kWp e capacità bess pari a {c_bess}kWh')
+        membri['AUC'] = pd.DataFrame()
+        # Istanzio la colonna DataOra
+        membri['AUC']['DataOra'] = np.array(membri[list_utenti[0]]['DataOra'])
+        membri['AUC']['Month'] = membri['AUC']['DataOra'].dt.month
+        membri['AUC']['Day'] = membri['AUC']['DataOra'].dt.day
+        membri['AUC']['Hour'] = membri['AUC']['DataOra'].dt.hour
+        membri['AUC']['Consumption'] = 0
+        functions.SimulaAUC(potenza, c_bess, list_utenti, df_prezzi, membri, Lat, Lon, perdite, parametri.incentivi['IncentivoAUC'], parametri.incentivi['RestituzioneComponentiTariffarie'], PUN_value=-1)
 
+        # Creazione df mensili ed annuali
+        AUC_mensile = membri['AUC'].resample('ME', on='DataOra').sum().drop(
+            columns=['Month', 'Day', 'Hour', 'PUN', 'SOC']).reset_index()
+        AUC_annuale = membri['AUC'].resample('YE', on='DataOra').sum().drop(
+            columns=['Month', 'Day', 'Hour', 'PUN', 'SOC']).reset_index()
+        SimEconomica = functions.SimEconomicaAUC(AUC_annuale, parametri.parametri_economici['PV'], parametri.parametri_economici['BESS'],
+                                              parametri.parametri_economici['Infrastruttura'], parametri.parametri_economici['Manodopera'],
+                                              parametri.parametri_economici['Gestione'], parametri.parametri_economici['Assicurazione'],
+                                              parametri.parametri_economici['TassoSconto'],
+                                              parametri.parametri_economici['CoeffRiduzionePrestazioni'], potenza, c_bess)
+        SimEconomica['RapportoCondivisaProduzione'] = AUC_annuale['Condivisa'][0] / AUC_annuale['P'][0]
+        SimEconomica['PUN'] = df_prezzi['PUN'].mean()
+        ElencoSimEconomiche = pd.concat([ElencoSimEconomiche, SimEconomica])
+
+        # Scrittura in output
+        try:
+            file = Path(
+                output_directory + 'output_PUN_File' + str(
+                    potenza) + '_' + str(c_bess) + '.xlsx')
+            if file.exists():
+                print("File already exists. Deleting it...")
+                os.remove(file)
+            with pd.ExcelWriter(
+                    output_directory + 'output_PUN_File' + str(
+                        potenza) + '_' + str(c_bess) + '.xlsx') as writer:
+                membri['AUC'].to_excel(writer, sheet_name='AUC', index=False)
+                AUC_mensile.to_excel(writer, sheet_name='AUC_mensile', index=False)
+                AUC_annuale.to_excel(writer, sheet_name='AUC_annuale', index=False)
+                SimEconomica.to_excel(writer, sheet_name='SimEconomica', index=False)
+                print('Writing file output_PUN_File' + str(potenza) + '_' + str(
+                    c_bess) + '.xlsx realizzata con successo')
+        except:
+            raise TypeError('Can not write output_PUN_File' + str(potenza) + '_' + str(
+                c_bess) + '.xlsx close it and retry.')
+
+        AUC_annuale['PV'] = potenza
+        AUC_annuale['BESS'] = c_bess
+        df_annuali = pd.concat([df_annuali, AUC_annuale])
+
+    #Scrivo i df_annuali con tutti i risultati con PUN specificato in file.
+    try:
+        file = Path(
+            output_directory + 'risultati_annuali_PUN_File.xlsx')
+        if file.exists():
+            print("File already exists. Deleting it...")
+            os.remove(file)
+        with pd.ExcelWriter(
+                output_directory + 'risultati_annuali_PUN_File.xlsx') as writer:
+            df_annuali.to_excel(writer, sheet_name='Annual Results', index=False)
+            print('Writing file risultati_annuali.xlsx realizzata con successo')
+    except:
+        raise TypeError('Can not write file risultati_annuali_PUN_File.xlsx, close it and retry.')
 
     ###############################################
     ###############################################
+    # Simulate with the PUN specified in the parametri.py file
     df_annuali = pd.DataFrame() # Empty df_annuali
     for PUN_value in PUN_list:
         for elements in list_dimensionamenti:

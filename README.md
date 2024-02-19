@@ -53,6 +53,7 @@ Include parameters of the simulation.
 
 - Latitude
 - Longitude
+- List of average energy prices 
 - PV System Losses: Set at 16%, accounting for inefficiencies.
 - Dimensioning: Evaluates combinations of electricity prices (PUN_list), PV system sizes (listaPV), and BESS capacities (listaBESS).
 - Economic Parameters: Includes costs for PV and BESS installation, labor, infrastructure, management, insurance, discount rate, and annual performance degradation of PV systems.
@@ -69,7 +70,7 @@ Description of the function is provided inside the file.
 ```pip install -r requirements.txt```.
 3) Inside the Input folder there are several files: 
     - 'Carichi_utenze_AUC.xlsx': the sheet 'Aggregato' contains the load profile of all the apartments in the CSG. The sheet 'Utenze Comuni' is the load profile of the common utilites of the building. These sheets can be modified accordingly to the requirements of the user. 
-    - 'PUN.xlsx': file containing the energy price. 
+    - 'PUN.xlsx': file containing the custom energy price (can vary hourly). 
 4) Run form the working directory
 ```python main.py```
 5) Results will be saved in "Output" folder. 

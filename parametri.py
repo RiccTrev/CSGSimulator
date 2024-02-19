@@ -6,9 +6,9 @@ Lon = 9.130 #longitude
 perdite = 16
 
 #SET DIMENSIONINGS TO BE EVALUATED
-PUN_list = [0.05, 0.100]
+PUN_list = [0.05] #€/kWh
 listaPV = [5, 7.5, 10] 
-listaBESS = [0, 5, 7.5, 10] 
+listaBESS = [0, 5] 
 
 #Cost dictionary
 parametri_economici = {
