@@ -11,7 +11,6 @@ This software is designed to run techno-economic simulations of CSGs accordingly
 ```'python main.py'```
 5) Results will be saved in Output folder. 
 
-
 ## Files:
 
 ### Main.py 
@@ -57,12 +56,12 @@ Description of the function is provided inside the file.
 ## How to setup and run: 
 1) Clone repository. Optionally in a virtual environment.
 2) Run 
-```pip install -r requirements.txt'```.
+```pip install -r requirements.txt```.
 3) Inside the Input folder there are several files: 
     - 'Carichi_utenze_AUC.xlsx': the sheet 'Aggregato' contains the load profile of all the apartments in the CSG. The sheet 'Utenze Comuni' is the load profile of the common utilites of the building. These sheets can be modified accordingly to the requirements of the user. 
     - 'PUN.xlsx': file containing the energy price. 
 4) Run form the working directory
-```'python main.py'```
+```python main.py```
 5) Results will be saved in "Output" folder. 
 
 
