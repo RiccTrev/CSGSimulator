@@ -4,7 +4,7 @@ __description__ = "This is a tool for the techno-economic simulation of CSGs (co
 __status__ = "validated"
 __date__ = "5/01/2024"
 __credits__ = "Riccardo Trevisan, University of Cagliari"
-__license__ = "GPL-3.0"
+__license__ = "CC BY-NC-SA 4.0"
 __python_version__ = "3.12.1"
 
 
