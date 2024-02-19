@@ -4,9 +4,11 @@ This software is designed to run techno-economic simulations of CSGs accordingly
 
 ## How to use (TL;DR version)
 1) Clone repository.
-2) Run 'pip install -r requirements.txt'.
+2) Run 
+```pip install -r requirements.txt'```.
 3) Modify files in the Input folder according to your specification. 
-4) Run 'python main.py' form the working directory.
+4) Run form the working directory
+```'python main.py'```
 5) Results will be saved in Output folder. 
 
 
@@ -37,11 +39,33 @@ Aggregation and Analysis: Finally, the script aggregates the annual data across 
 
 This script is a powerful tool for communities, energy managers, and policymakers to assess the potential benefits and costs of adopting PV and BESS technologies. It leverages detailed data and sophisticated simulations to inform decisions regarding sustainable energy solutions.
 
+### parametri.py
+Include parameters of the simulation.
 
+- Latitude
+- Longitude
+- PV System Losses: Set at 16%, accounting for inefficiencies.
+- Dimensioning: Evaluates combinations of electricity prices (PUN_list), PV system sizes (listaPV), and BESS capacities (listaBESS).
+- Economic Parameters: Includes costs for PV and BESS installation, labor, infrastructure, management, insurance, discount rate, and annual performance degradation of PV systems.
+- Incentives: Features incentives for energy production and storage, including a new tiered scheme (incentiviT1, incentiviT2, incentiviT3) based on system capacity.
+- Bill Components: Details the percentages of transportation, management costs, taxes, and the impact of energy matter on the total bill, with energy matter calculated by deducting taxes and management costs from 100%.
 
+### functions.py
+Include funcitons used in the main.py script. 
+Description of the function is provided inside the file.
 
+## How to setup and run: 
+1) Clone repository. Optionally in a virtual environment.
+2) Run 
+```pip install -r requirements.txt'```.
+3) Inside the Input folder there are several files: 
+    - 'Carichi_utenze_AUC.xlsx': the sheet 'Aggregato' contains the load profile of all the apartments in the CSG. The sheet 'Utenze Comuni' is the load profile of the common utilites of the building. These sheets can be modified accordingly to the requirements of the user. 
+    - 'PUN.xlsx': file containing the energy price. 
+4) Run form the working directory
+```'python main.py'```
+5) Results will be saved in "Output" folder. 
 
 
 ## License
 
-[GPL-3.0](https://choosealicense.com/licenses/mit/)
+[GPL-3.0](https://github.com/RiccTrev/CSGSimulator/blob/main/license.txt)
