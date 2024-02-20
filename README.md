@@ -80,4 +80,4 @@ This software is devloped in Python V3.12.1.
 For the required packages see "requirements.txt" file. 
 
 ## License
-[GPL-3.0](https://github.com/RiccTrev/CSGSimulator/blob/main/license.txt)
+[CC BY-NC-SA 4.0](https://github.com/RiccTrev/CSGSimulator/blob/main/license.txt)
